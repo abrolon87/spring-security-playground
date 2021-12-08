@@ -1,6 +1,9 @@
 package com.amanda.springsecurity.security;
 
 import static com.amanda.springsecurity.security.ApplicationUserRole.*;
+
+import java.util.concurrent.TimeUnit;
+
 import static com.amanda.springsecurity.security.ApplicationUserPermission.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,21 +39,33 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
 	protected void configure(HttpSecurity http) throws Exception {
 		http
 			.csrf().disable() // this is bad for production - CROSS SITE REQUEST FORGERY
-//		    .csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-//		    .and()
 			.authorizeRequests()
 			.antMatchers("/", "/index", "/css/*", "/js/*").permitAll() // whitelists urls
 			.antMatchers("/api/**").hasRole(STUDENT.name())
-			
-			// these are represented with annotations in the controllers
-//			.antMatchers(HttpMethod.DELETE, "/management/api/**").hasAuthority(COURSE_WRITE.getPermission())
-//			.antMatchers(HttpMethod.PUT, "/management/api/**").hasAuthority(COURSE_WRITE.getPermission())
-//			.antMatchers(HttpMethod.POST, "/management/api/**").hasAuthority(COURSE_WRITE.getPermission())
-//			.antMatchers(HttpMethod.GET, "/management/api/**").hasAnyRole(ADMIN.name(), ADMINTRAINEE.name())
 			.anyRequest()    // all requests
 			.authenticated() // to be authenticated
 			.and()
-			.httpBasic(); //mechanism we want to enforce; basic authentication
+			.formLogin()
+				.loginPage("/login").permitAll()
+				// login form parameters on html form
+				.passwordParameter("password")
+				.usernameParameter("username")
+			.defaultSuccessUrl("/courses", true)
+			.and()
+			.rememberMe() //defaults to 2 weeks
+//			.rememberMe().tokenValiditySeconds((int) TimeUnit.DAYS.toSeconds(21)) //to remember for 21 days
+//			.key("somethingverysecured")
+			// remember me parameter on html form
+				.rememberMeParameter("remember-me")
+			
+			.and() 
+			.logout()  
+				.logoutUrl("/logout")
+				.clearAuthentication(true)
+				.invalidateHttpSession(true)
+				.deleteCookies("JSESSIONID", "remember-me")
+				.logoutSuccessUrl("/login")
+			;
 	}
 
 	// UserDetailsService used to retrieve users from database
