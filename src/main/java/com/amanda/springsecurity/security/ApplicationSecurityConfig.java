@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -21,6 +23,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
+import com.amanda.springsecurity.auth.ApplicationUserService;
+
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
@@ -28,11 +32,13 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
 	
 	
 	private final PasswordEncoder passwordEncoder;
+	private final ApplicationUserService applicationUserService;
 	
 	
 	@Autowired
-	public ApplicationSecurityConfig(PasswordEncoder passwordEncoder) {
+	public ApplicationSecurityConfig(PasswordEncoder passwordEncoder, ApplicationUserService applicationUserService) {
 		this.passwordEncoder = passwordEncoder;
+		this.applicationUserService = applicationUserService;
 	}
 
 	@Override
@@ -68,33 +74,23 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
 			;
 	}
 
-	// UserDetailsService used to retrieve users from database
-	@Override
-	@Bean
-	protected UserDetailsService userDetailsService() {
-		UserDetails anadiazuser = User.builder()
-			.username("anadiaz") 
-			.password(passwordEncoder.encode("password"))
-			//.roles(STUDENT.name()) // ROLE_STUDENT role based 
-			.authorities(STUDENT.getGrantedAuthorities()) // authority/permission based
-			.build();
+	// this is the provider
+	@Bean 
+	public DaoAuthenticationProvider daoAuthenticationProvider() {
+		DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
 		
-		UserDetails mariajonesuser = User.builder()
-				.username("mariajones") 
-				.password(passwordEncoder.encode("password"))
-				//.roles(ADMIN.name()) // ROLE_ADMIN
-				.authorities(ADMIN.getGrantedAuthorities()) // authority/permission based
-				.build();
+		provider.setPasswordEncoder(passwordEncoder);
+		provider.setUserDetailsService(applicationUserService);
 		
-		UserDetails jamesbonduser = User.builder()
-				.username("jamesbond") 
-				.password(passwordEncoder.encode("password"))
-				//.roles(ADMINTRAINEE.name()) // ROLE_ADMINTRAINEE
-				.authorities(ADMINTRAINEE.getGrantedAuthorities()) // authority/permission based
-				.build();
-		
-		return new InMemoryUserDetailsManager(anadiazuser, mariajonesuser, jamesbonduser);
+		return provider;
 	}
+
+	// this is how to wire things up
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+		auth.authenticationProvider(daoAuthenticationProvider());
+	}
+	
 	
 	
 	
